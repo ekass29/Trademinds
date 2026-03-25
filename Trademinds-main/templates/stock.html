@@ -1,0 +1,288 @@
+{% extends 'layout.html' %}
+{% block content %}
+<!-- Header Section -->
+<header class="app-header">
+  <div class="header-container">
+    <div class="logo-container">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="TradeMinds Logo" class="app-logo">
+      <span class="app-name">TradeMinds</span>
+    </div>
+    <nav class="nav-links">
+      <a href="{{ url_for('home') }}" class="nav-button"><i class="fas fa-home"></i> Home</a>
+      <a href="{{ url_for('profile') }}" class="nav-button"><i class="fas fa-user"></i> Profile</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Main Content - Keeping your original styling -->
+<div class="container stock-detail">
+  <div class="stock-header">
+    <h1 class="stock-title">{{ stock_symbol }} Stock Analysis</h1>
+    <div class="price-display">
+      <span class="current-price">${{ latest_price }}</span>
+      <span class="price-time">as of {{ latest_time }}</span>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <div class="card">
+      <h2><i class="fas fa-chart-line"></i> Historical Price Chart (Last 30 Days)</h2>
+      <canvas id="priceChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><i class="fas fa-table"></i> Last 5 Days Data</h2>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Open</th>
+            <th>High</th>
+            <th>Low</th>
+            <th>Close</th>
+            <th>Volume</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in last_5_days %}
+          <tr>
+            <td>{{ day.date }}</td>
+            <td>${{ day.open }}</td>
+            <td>${{ day.high }}</td>
+            <td>${{ day.low }}</td>
+            <td>${{ day.close }}</td>
+            <td>{{ "{:,}".format(day.volume|int) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><i class="fas fa-newspaper"></i> Related News</h2>
+    <div class="news-articles">
+      {% for article in news_articles %}
+      <div class="news-article">
+        <h3><a href="{{ article.url }}" target="_blank">{{ article.title }}</a></h3>
+        <p class="article-description">{{ article.description }}</p>
+        <div class="article-footer">
+          {% if article.source %}
+          <span class="article-source">{{ article.source.name }}</span>
+          {% endif %}
+          {% if article.publishedAt %}
+          <span class="article-date">{{ article.publishedAt[:10] }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Header Styles Only */
+  .app-header {
+    background-color: #1976d2;
+    color: white;
+    padding: 15px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+  }
+
+  .header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .app-logo {
+    height: 40px;
+    width: auto;
+  }
+
+  .app-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: white;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 20px;
+  }
+
+  .nav-button {
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 15px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+
+  .nav-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Original Table Styles */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th, 
+  .data-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .data-table th {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+    font-weight: 500;
+  }
+
+  .data-table tr:hover {
+    background-color: #f5f9ff;
+  }
+
+  /* Original News Styles */
+  .news-articles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+  }
+
+  .news-article {
+    padding: 15px;
+    border-left: 4px solid #1976d2;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+  }
+
+  .news-article h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.1rem;
+  }
+
+  .news-article h3 a {
+    color: #1976d2;
+    text-decoration: none;
+  }
+
+  .news-article h3 a:hover {
+    text-decoration: underline;
+  }
+
+  .article-description {
+    color: #424242;
+    margin: 10px 0;
+    line-height: 1.5;
+  }
+
+  .article-footer {
+    display: flex;
+    justify-content: space-between;
+    color: #757575;
+    font-size: 0.85rem;
+    margin-top: 10px;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .header-container {
+      flex-direction: column;
+      padding: 10px;
+    }
+    
+    .logo-container {
+      margin-bottom: 10px;
+    }
+    
+    .nav-links {
+      width: 100%;
+      justify-content: space-around;
+    }
+    
+    .news-articles {
+      grid-template-columns: 1fr;
+    }
+    
+    .data-table th, 
+    .data-table td {
+      padding: 8px 10px;
+    }
+  }
+</style>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const labels = JSON.parse('{{ dates | tojson | safe }}');
+  const prices = JSON.parse('{{ prices | tojson | safe }}');
+
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '{{ stock_symbol }} Closing Prices',
+        data: prices,
+        borderColor: 'rgba(25, 118, 210, 1)',
+        backgroundColor: 'rgba(25, 118, 210, 0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return '$' + context.parsed.y.toFixed(2);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { 
+          grid: { display: false },
+          title: { display: true, text: 'Date', color: '#666' }
+        },
+        y: { 
+          title: { display: true, text: 'Price (USD)', color: '#666' },
+          ticks: {
+            callback: function(value) {
+              return '$' + value.toFixed(2);
+            }
+          }
+        }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

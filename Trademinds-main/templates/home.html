@@ -1,0 +1,754 @@
+{% extends 'layout.html' %}
+{% block content %}
+<!-- Header Section -->
+<header class="app-header">
+  <div class="header-container">
+    <div class="logo-container">
+      <img src="{{ url_for('static', filename='Logo.png') }}" alt="TradeMind Logo" class="app-logo">
+      <div class="logo-text">
+        <h1 class="app-title">TradeMind</h1>
+        <p class="app-tagline">Smart Investing Through Sentiment Analysis</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="market-status">
+        <span class="badge market-open">Live Market</span>
+        <small class="update-time">Updated: {{ now.strftime('%H:%M:%S') }}</small>
+      </div>
+      <nav class="nav-links">
+        <a href="{{ url_for('home') }}" class="nav-button"><i class="fas fa-home"></i> Home</a>
+        <a href="{{ url_for('profile') }}" class="nav-button"><i class="fas fa-user"></i> Profile</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<div class="main-content-wrapper">
+  <div class="container stock-app">
+    <!-- Search Bar -->
+    <div class="search-card card">
+      <div class="card-body">
+        <h5 class="section-title"><i class="fas fa-search mr-2"></i>Search Stocks</h5>
+        <form action="/stock" method="get" class="search-form">
+          <div class="input-group">
+            <input type="text" name="symbol" class="form-control search-input" placeholder="e.g. AAPL, MSFT, TSLA..." required>
+            <div class="input-group-append">
+              <button type="submit" class="btn search-btn">
+                <i class="fas fa-chart-line mr-1"></i> Analyze
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Top Stocks Overview -->
+    <div class="stocks-card card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="section-title mb-0"><i class="fas fa-trophy mr-2"></i>Market Leaders (30+ Stocks)</h5>
+          <div class="market-indicators">
+            <span class="indicator positive">{{ positive_count }} <i class="fas fa-arrow-up"></i></span>
+            <span class="indicator negative">{{ negative_count }} <i class="fas fa-arrow-down"></i></span>
+          </div>
+        </div>
+        <div class="table-responsive-xl">
+          <table class="stocks-table table table-hover">
+            <thead class="sticky-header">
+              <tr>
+                <th class="text-left">Symbol</th>
+                <th class="text-left">Company</th>
+                <th class="text-right">Price</th>
+                <th class="text-right">Change</th>
+                <th class="text-center">Day Range</th>
+                <th class="text-center">Sentiment</th>
+                <th class="text-center">Volume</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stock in top_stocks %}
+              <tr>
+                <td class="text-left stock-symbol">{{ stock.symbol }}</td>
+                <td class="text-left company-name">{{ stock.name }}</td>
+                <td class="text-right stock-price">${{ "%.2f"|format(stock.price) }}</td>
+                <td class="text-right price-change {{ 'positive' if stock.change >= 0 else 'negative' }}">
+                  {{ "%+.2f"|format(stock.change) }}%
+                  <i class="fas fa-arrow-{{ 'up' if stock.change >= 0 else 'down' }} ml-1"></i>
+                </td>
+                <td class="text-center">
+                  <div class="range-bar">
+                    <div class="range-track">
+                      <div class="range-progress {{ 'positive' if stock.change >= 0 else 'negative' }}" 
+                           style="width: {{ 50 + (stock.change|abs * 2) }}%"></div>
+                    </div>
+                    <small>${{ "%.2f"|format(stock.low) }} - ${{ "%.2f"|format(stock.high) }}</small>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <span class="sentiment-badge {{ 'positive' if stock.sentiment == 'positive' else 'negative' if stock.sentiment == 'negative' else 'neutral' }}">
+                    <i class="fas fa-{{ 'smile' if stock.sentiment == 'positive' else 'frown' if stock.sentiment == 'negative' else 'meh' }} mr-1"></i>
+                    {{ stock.sentiment }}
+                  </span>
+                </td>
+                <td class="text-center volume">
+                  {{ "{:,.0f}".format(stock.volume/1000) }}K
+                </td>
+                <td class="text-center actions">
+                  <div class="btn-group btn-group-sm">
+                    <a href="/stock/{{ stock.symbol }}" class="btn view-btn" title="Detailed Analysis">
+                      <i class="fas fa-chart-line"></i>
+                    </a>
+                    <button class="btn bookmark-btn" data-symbol="{{ stock.symbol }}" title="Add to Watchlist">
+                      <i class="far fa-bookmark"></i>
+                    </button>
+                    <a href="#" class="btn news-btn" title="Latest News">
+                      <i class="far fa-newspaper"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bookmarked Stocks -->
+    <div class="watchlist-card card">
+      <div class="card-body">
+        <h5 class="section-title"><i class="fas fa-star mr-2"></i>Your Watchlist</h5>
+        {% if bookmarked_stocks %}
+        <div class="table-responsive">
+          <table class="watchlist-table table">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Price</th>
+                <th>Change</th>
+                <th>Last Analyzed</th>
+                <th>Sentiment Trend</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for stock in bookmarked_stocks %}
+              <tr>
+                <td class="stock-symbol">{{ stock.symbol }}</td>
+                <td class="stock-price">${{ "%.2f"|format(stock.price) }}</td>
+                <td class="{{ 'positive' if stock.change >= 0 else 'negative' }}">
+                  {{ "%+.2f"|format(stock.change) }}%
+                </td>
+                <td class="last-analyzed">{{ stock.last_analyzed }}</td>
+                <td>
+                  <span class="trend-badge {{ 'positive' if stock.trend == 'up' else 'negative' if stock.trend == 'down' else 'neutral' }}">
+                    <i class="fas fa-arrow-{{ 'up' if stock.trend == 'up' else 'down' if stock.trend == 'down' else 'right' }}"></i>
+                    {{ stock.trend|upper }}
+                  </span>
+                </td>
+                <td class="actions">
+                  <div class="btn-group btn-group-sm">
+                    <a href="/stock/{{ stock.symbol }}" class="btn analyze-btn" title="Analyze">
+                      <i class="fas fa-search-dollar"></i>
+                    </a>
+                    <button class="btn remove-btn remove-bookmark" title="Remove" data-symbol="{{ stock.symbol }}">
+                      <i class="far fa-trash-alt"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-watchlist text-center py-4">
+          <i class="far fa-star fa-3x mb-3 text-muted"></i>
+          <p class="text-muted">No bookmarked stocks yet. Click the <i class="far fa-bookmark"></i> icon to add stocks to your watchlist.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Bookmark buttons
+  document.querySelectorAll('.bookmark-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const symbol = this.getAttribute('data-symbol');
+      fetch('/bookmark', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({symbol: symbol})
+      })
+      .then(response => response.json())
+      .then(data => {
+        if(data.success) {
+          location.reload();
+        }
+      });
+    });
+  });
+
+  // Remove bookmark buttons
+  document.querySelectorAll('.remove-bookmark').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const symbol = this.getAttribute('data-symbol');
+      fetch('/bookmark', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({symbol: symbol})
+      })
+      .then(response => response.json())
+      .then(data => {
+        if(data.success) {
+          location.reload();
+        }
+      });
+    });
+  });
+});
+</script>
+
+<!-- CSS Styling -->
+<style>
+  :root {
+    --primary-blue: #1976d2;
+    --dark-blue: #0d47a1;
+    --light-blue: #e3f2fd;
+    --lighter-blue: #f5f9ff;
+    --white: #ffffff;
+    --light-gray: #f5f5f5;
+    --medium-gray: #e0e0e0;
+    --dark-gray: #757575;
+    --positive: #4caf50;
+    --negative: #f44336;
+    --neutral: #9e9e9e;
+    --market-open: #2e7d32;
+    --market-closed: #d32f2f;
+  }
+
+  /* Header Styles */
+  .app-header {
+    background-color: var(--primary-blue);
+    color: white;
+    padding: 15px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+  }
+
+  .header-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .app-logo {
+    height: 50px;
+    width: auto;
+  }
+
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-title {
+    color: white;
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+
+  .app-tagline {
+    color: rgba(255,255,255,0.8);
+    margin: 5px 0 0;
+    font-size: 0.9rem;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+  }
+
+  .market-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .badge.market-open {
+    background-color: var(--market-open);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.8rem;
+  }
+
+  .update-time {
+    color: rgba(255,255,255,0.8);
+    font-size: 0.85rem;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 15px;
+  }
+
+  .nav-button {
+    color: white;
+    text-decoration: none;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 15px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+  }
+
+  .nav-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Main Content Styles */
+  .main-content-wrapper {
+    padding-top: 20px;
+    background-color: var(--lighter-blue);
+    min-height: calc(100vh - 82px); /* Adjust based on header height */
+  }
+
+  .stock-app {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #333;
+  }
+
+  /* Cards */
+  .card {
+    background-color: var(--white);
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    margin-bottom: 30px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    overflow: hidden;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-body {
+    padding: 25px;
+  }
+
+  .section-title {
+    color: var(--dark-blue);
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--light-blue);
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Search Section */
+  .search-form {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .search-input {
+    border: 1px solid var(--medium-gray);
+    border-radius: 6px;
+    padding: 12px 20px;
+    font-size: 16px;
+    height: 48px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    border-right: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .search-input:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.15);
+  }
+
+  .search-btn {
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 20px;
+    font-weight: 500;
+    transition: all 0.2s;
+    height: 48px;
+    box-shadow: 0 2px 5px rgba(25, 118, 210, 0.2);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .search-btn:hover {
+    background-color: var(--dark-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(25, 118, 210, 0.3);
+  }
+
+  /* Market Indicators */
+  .market-indicators {
+    display: flex;
+    gap: 15px;
+  }
+
+  .indicator {
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .indicator.positive {
+    color: var(--positive);
+    background-color: rgba(76, 175, 80, 0.1);
+  }
+
+  .indicator.negative {
+    color: var(--negative);
+    background-color: rgba(244, 67, 54, 0.1);
+  }
+
+  /* Tables */
+  .table {
+    margin-bottom: 0;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .table-responsive-xl {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sticky-header {
+    position: sticky;
+    top: 0;
+    background-color: var(--light-blue);
+    z-index: 10;
+  }
+
+  .table thead th {
+    background-color: var(--light-blue);
+    color: var(--dark-blue);
+    border-bottom: none;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    padding: 15px 12px;
+    position: relative;
+  }
+
+  .table thead th:after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 1px;
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .table tbody tr {
+    transition: background-color 0.2s;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  }
+
+  .table tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .table tbody tr:hover {
+    background-color: rgba(25, 118, 210, 0.03);
+  }
+
+  .table td {
+    padding: 12px;
+    vertical-align: middle;
+    border-top: 1px solid rgba(0, 0, 0, 0.03);
+  }
+
+  .stock-symbol {
+    font-weight: 600;
+    color: var(--dark-blue);
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+
+  .company-name {
+    color: var(--dark-gray);
+    font-size: 0.9rem;
+    min-width: 180px;
+  }
+
+  .stock-price {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .price-change.positive {
+    color: var(--positive);
+    font-weight: 600;
+  }
+
+  .price-change.negative {
+    color: var(--negative);
+    font-weight: 600;
+  }
+
+  /* Range Bar */
+  .range-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 150px;
+  }
+
+  .range-track {
+    width: 100%;
+    height: 6px;
+    background-color: var(--light-gray);
+    border-radius: 3px;
+    margin-bottom: 5px;
+    overflow: hidden;
+  }
+
+  .range-progress {
+    height: 100%;
+    border-radius: 3px;
+  }
+
+  .range-progress.positive {
+    background-color: var(--positive);
+    margin-left: 50%;
+  }
+
+  .range-progress.negative {
+    background-color: var(--negative);
+    margin-right: 50%;
+  }
+
+  /* Badges */
+  .sentiment-badge, .trend-badge {
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    min-width: 80px;
+    justify-content: center;
+  }
+
+  .sentiment-badge.positive, .trend-badge.positive {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: var(--positive);
+  }
+
+  .sentiment-badge.negative, .trend-badge.negative {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: var(--negative);
+  }
+
+  .sentiment-badge.neutral, .trend-badge.neutral {
+    background-color: rgba(158, 158, 158, 0.1);
+    color: var(--neutral);
+  }
+
+  /* Volume */
+  .volume {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--dark-gray);
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-group-sm .btn {
+    padding: 6px 10px;
+  }
+
+  .view-btn, .analyze-btn {
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+  }
+
+  .view-btn:hover, .analyze-btn:hover {
+    background-color: var(--dark-blue);
+    transform: translateY(-1px);
+  }
+
+  .bookmark-btn {
+    background-color: transparent;
+    color: var(--primary-blue);
+    border: 1px solid var(--primary-blue);
+  }
+
+  .bookmark-btn:hover {
+    background-color: rgba(25, 118, 210, 0.1);
+  }
+
+  .remove-btn {
+    background-color: transparent;
+    color: var(--negative);
+    border: 1px solid var(--negative);
+  }
+
+  .remove-btn:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+  }
+
+  .news-btn {
+    background-color: transparent;
+    color: var(--dark-gray);
+    border: 1px solid var(--medium-gray);
+  }
+
+  .news-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  /* Empty Watchlist */
+  .empty-watchlist {
+    color: var(--dark-gray);
+    padding: 30px;
+    font-style: italic;
+    background-color: var(--light-gray);
+    border-radius: 6px;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 1200px) {
+    .stock-app {
+      padding: 15px;
+    }
+    
+    .company-name {
+      min-width: 120px;
+    }
+  }
+
+  @media (max-width: 992px) {
+    .header-container {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .header-actions {
+      margin-top: 15px;
+      width: 100%;
+      justify-content: space-between;
+    }
+    
+    .section-title {
+      font-size: 1.1rem;
+    }
+    
+    .table thead th {
+      font-size: 0.7rem;
+      padding: 10px 8px;
+    }
+    
+    .table td {
+      padding: 8px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .search-form {
+      flex-direction: column;
+      max-width: 100%;
+    }
+    
+    .search-btn {
+      width: 100%;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    
+    .search-input {
+      border-right: 1px solid var(--medium-gray);
+      border-radius: 6px;
+    }
+    
+    .range-bar small {
+      font-size: 0.7rem;
+    }
+    
+    .nav-links {
+      width: 100%;
+      justify-content: space-around;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .logo-container {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .app-logo {
+      margin-right: 0;
+      margin-bottom: 10px;
+    }
+    
+    .app-title {
+      font-size: 1.5rem;
+    }
+    
+    .header-actions {
+      flex-direction: column;
+      gap: 10px;
+    }
+  }
+</style>
+{% endblock %}
